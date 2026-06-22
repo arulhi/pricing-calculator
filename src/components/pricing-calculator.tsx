@@ -1,30 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Check, Plus, Minus, HelpCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-
-const SERVICE_TYPES = [
-  { id: "live-events", name: "Live Events", desc: "Real-time captions, translations & streaming", rate: 150, unit: "hour" },
-  { id: "content", name: "Content Translation", desc: "Audio, video, slides & documents", rate: 100, unit: "hour" },
-  { id: "conversations", name: "Conversations", desc: "Multilingual meetings & discussions", rate: 75, unit: "hour" },
-  { id: "multiple", name: "Multiple Services", desc: "Combination of services for your needs", rate: 500, unit: "hour" },
-]
+import { getServiceTypes, DEFAULT_SERVICE_TYPES } from "@/data/service-types"
+import { getAddons, DEFAULT_ADDONS } from "@/data/addons"
+import { addSubmission } from "@/data/submissions"
 
 const PREMIUM_LANG_RATE = 25
-const BASE_LANGUAGES = 2
-const BASE_ATTENDEES = 100
-
-const ADDONS = [
-  { id: "text-to-speech", name: "Text-to-Speech", desc: "AI voice output for translations", price: 50, unit: "event" },
-  { id: "interpreter", name: "Professional Interpreter", desc: "Human interpreter for live supervision", price: 200, unit: "hour" },
-  { id: "ai-customization", name: "AI Customization", desc: "Train AI on your terminology & style", price: 500, unit: "project" },
-  { id: "support", name: "On-Call Support", desc: "Dedicated technician during your event", price: 150, unit: "event" },
-  { id: "polls", name: "Multilingual Polls", desc: "Interactive polls in multiple languages", price: 25, unit: "event" },
-]
 
 export default function PricingCalculator() {
+  const [serviceTypes, setServiceTypes] = useState(DEFAULT_SERVICE_TYPES)
+  const [addons, setAddons] = useState(DEFAULT_ADDONS)
   const [serviceType, setServiceType] = useState("live-events")
   const [hours, setHours] = useState(2)
   const [languages, setLanguages] = useState(2)
@@ -37,22 +25,26 @@ export default function PricingCalculator() {
     lastName: "",
     email: "",
     company: "",
-    serviceType: "",
     message: "",
   })
 
-  const service = SERVICE_TYPES.find((s) => s.id === serviceType)!
+  useEffect(() => {
+    setServiceTypes(getServiceTypes())
+    setAddons(getAddons())
+  }, [])
+
+  const service = serviceTypes.find((s) => s.id === serviceType) || serviceTypes[0]
 
   const baseCost = service.rate * hours
-  const additionalLanguages = Math.max(0, languages - BASE_LANGUAGES)
-  const languageCost = additionalLanguages * 25 * hours
+  const languageCost = languages * 25 * hours
   const premiumCost = premiumLanguages ? PREMIUM_LANG_RATE * hours : 0
   const addonCost = selectedAddons.reduce((acc, id) => {
-    const addon = ADDONS.find((a) => a.id === id)
+    const addon = addons.find((a) => a.id === id)
     return acc + (addon?.price || 0)
   }, 0)
+  const attendeeCost = attendees * 0.50
 
-  const totalEstimate = baseCost + languageCost + premiumCost + addonCost
+  const totalEstimate = baseCost + languageCost + premiumCost + addonCost + attendeeCost
 
   const toggleAddon = (id: string) => {
     setSelectedAddons((prev) =>
@@ -61,18 +53,11 @@ export default function PricingCalculator() {
   }
 
   const resetForm = () => {
-    setFormData({ firstName: "", lastName: "", email: "", company: "", serviceType: "", message: "" })
+    setFormData({ firstName: "", lastName: "", email: "", company: "", message: "" })
   }
 
   const openQuoteForm = () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      company: "",
-      serviceType: "",
-      message: "",
-    })
+    setFormData({ firstName: "", lastName: "", email: "", company: "", message: "" })
     setShowQuoteForm(true)
   }
 
@@ -104,7 +89,7 @@ export default function PricingCalculator() {
             </h3>
             <p className="text-xs text-muted-foreground -mt-4">Choose the type of translation service you need</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SERVICE_TYPES.map((st) => (
+              {serviceTypes.map((st) => (
                 <button
                   key={st.id}
                   onClick={() => setServiceType(st.id)}
@@ -161,7 +146,7 @@ export default function PricingCalculator() {
 
           <div className="space-y-5">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Languages</h3>
-            <p className="text-xs text-muted-foreground -mt-4">Target languages ({BASE_LANGUAGES} included)</p>
+            <p className="text-xs text-muted-foreground -mt-4">Target languages</p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setLanguages(Math.max(1, languages - 1))}
@@ -195,7 +180,7 @@ export default function PricingCalculator() {
 
           <div className="space-y-5">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Attendees / Connections</h3>
-            <p className="text-xs text-muted-foreground -mt-4">Number of viewers or participants ({BASE_ATTENDEES} included)</p>
+            <p className="text-xs text-muted-foreground -mt-4">Number of viewers or participants</p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setAttendees(Math.max(1, attendees - 100))}
@@ -271,7 +256,7 @@ export default function PricingCalculator() {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Optional Add-ons</h3>
             <p className="text-xs text-muted-foreground -mt-3">Enhance your experience with these extras</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {ADDONS.map((addon) => (
+              {addons.map((addon) => (
                 <button
                   key={addon.id}
                   onClick={() => toggleAddon(addon.id)}
@@ -315,9 +300,9 @@ export default function PricingCalculator() {
                 <span className="text-muted-foreground">{service.name}</span>
                 <span className="font-medium">${baseCost.toLocaleString()}</span>
               </div>
-              {additionalLanguages > 0 && (
+              {languages > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Additional languages ({additionalLanguages})</span>
+                  <span className="text-muted-foreground">Languages ({languages})</span>
                   <span className="font-medium">+${languageCost.toLocaleString()}</span>
                 </div>
               )}
@@ -325,6 +310,12 @@ export default function PricingCalculator() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Premium languages</span>
                   <span className="font-medium">+${premiumCost.toLocaleString()}</span>
+                </div>
+              )}
+              {attendees > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Attendees ({attendees})</span>
+                  <span className="font-medium">+${attendeeCost.toLocaleString()}</span>
                 </div>
               )}
               {selectedAddons.length > 0 && (
@@ -380,6 +371,25 @@ export default function PricingCalculator() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
+                addSubmission({
+                  id: crypto.randomUUID(),
+                  timestamp: Date.now(),
+                  serviceType: service.id,
+                  serviceName: service.name,
+                  hours,
+                  languages,
+                  attendees,
+                  premiumLanguages,
+                  selectedAddons,
+                  totalEstimate,
+                  formData: {
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    email: formData.email,
+                    company: formData.company,
+                    message: formData.message,
+                  },
+                })
                 closeQuoteForm()
               }}
               className="space-y-4"

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Menu, X, ChevronDown, ArrowRight, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -555,10 +556,13 @@ function ResourcesMegaMenu({ close }: { close: () => void }) {
 }
 
 export default function Header() {
+  const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [active, setActive] = useState<string | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navRef = useRef<HTMLDivElement>(null)
+
+  if (pathname.startsWith("/admin")) return null
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
