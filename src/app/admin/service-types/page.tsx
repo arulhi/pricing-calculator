@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { getServiceTypes, saveServiceTypes, resetServiceTypes, DEFAULT_SERVICE_TYPES, type ServiceType } from "@/data/service-types"
-import { ArrowLeft, Plus, Trash2, Pencil, RotateCcw, X, AlertTriangle } from "lucide-react"
+import { getServiceTypes, createServiceType, updateServiceType, deleteServiceType, type ServiceType } from "@/data/service-types"
+import { ArrowLeft, Plus, Trash2, Pencil, X, AlertTriangle } from "lucide-react"
 import { showToast } from "@/components/ui/toast"
 
 export default function AdminServiceTypes() {
   const [types, setTypes] = useState<ServiceType[]>([])
-  const [modal, setModal] = useState<{ type: "add" | "edit"; index?: number } | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState<{ type: "add" | "edit"; id?: string; index?: number } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ index: number; id: string } | null>(null)
   const [form, setForm] = useState({ id: "", name: "", desc: "", rate: "", unit: "" })
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setTypes(getServiceTypes())
+    getServiceTypes().then(setTypes).finally(() => setLoading(false))
   }, [])
 
   const openAdd = () => {
@@ -24,42 +26,46 @@ export default function AdminServiceTypes() {
   const openEdit = (i: number) => {
     const t = types[i]
     setForm({ id: t.id, name: t.name, desc: t.desc, rate: String(t.rate), unit: t.unit })
-    setModal({ type: "edit", index: i })
+    setModal({ type: "edit", id: t.id, index: i })
   }
 
-  const handleSave = () => {
-    const item: ServiceType = {
+  const handleSave = async () => {
+    setSaving(true)
+    const item = {
       id: form.id.replace(/\s+/g, "-"),
       name: form.name,
       desc: form.desc,
       rate: parseInt(form.rate) || 0,
       unit: form.unit,
     }
-    let next: ServiceType[]
-    if (modal?.type === "add") {
-      next = [...types, item]
-    } else {
-      next = types.map((t, i) => (i === modal?.index ? item : t))
+    try {
+      if (modal?.type === "add") {
+        const created = await createServiceType(item)
+        setTypes((prev) => [...prev, created])
+        showToast("success", "Service type added")
+      } else if (modal?.id) {
+        const updated = await updateServiceType(modal.id, item)
+        setTypes((prev) => prev.map((t) => (t.id === modal.id ? updated : t)))
+        showToast("success", "Service type updated")
+      }
+      setModal(null)
+    } catch {
+      showToast("error", "Failed to save service type")
+    } finally {
+      setSaving(false)
     }
-    setTypes(next)
-    saveServiceTypes(next)
-    setModal(null)
-    showToast("success", modal?.type === "add" ? "Service type added" : "Service type updated")
   }
 
-  const handleDelete = () => {
-    if (confirmDelete === null) return
-    const next = types.filter((_, i) => i !== confirmDelete)
-    setTypes(next)
-    saveServiceTypes(next)
-    setConfirmDelete(null)
-    showToast("success", "Service type deleted")
-  }
-
-  const handleReset = () => {
-    resetServiceTypes()
-    setTypes(DEFAULT_SERVICE_TYPES)
-    showToast("success", "Service types reset to defaults")
+  const handleDelete = async () => {
+    if (!confirmDelete) return
+    try {
+      await deleteServiceType(confirmDelete.id)
+      setTypes((prev) => prev.filter((_, i) => i !== confirmDelete.index))
+      setConfirmDelete(null)
+      showToast("success", "Service type deleted")
+    } catch {
+      showToast("error", "Failed to delete service type")
+    }
   }
 
   return (
@@ -75,16 +81,10 @@ export default function AdminServiceTypes() {
               <p className="text-sm text-muted-foreground mt-1">Manage the service options in the pricing calculator</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted/50 transition-colors">
-              <RotateCcw className="size-3.5" />
-              Reset
-            </button>
-            <button onClick={openAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-              <Plus className="size-3.5" />
-              Add Service Type
-            </button>
-          </div>
+          <button onClick={openAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+            <Plus className="size-3.5" />
+            Add Service Type
+          </button>
         </div>
 
         <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
@@ -100,7 +100,11 @@ export default function AdminServiceTypes() {
               </tr>
             </thead>
             <tbody>
-              {types.map((t, i) => (
+              {loading ? (
+                <tr><td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">Loading...</td></tr>
+              ) : types.length === 0 ? (
+                <tr><td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">No service types yet</td></tr>
+              ) : types.map((t, i) => (
                 <tr key={t.id} className="border-b border-border/20 hover:bg-muted/10 transition-colors">
                   <td className="p-4 text-xs font-mono text-muted-foreground">{t.id}</td>
                   <td className="p-4 font-medium">{t.name}</td>
@@ -112,18 +116,13 @@ export default function AdminServiceTypes() {
                       <button onClick={() => openEdit(i)} className="size-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted/50 transition-colors">
                         <Pencil className="size-3.5" />
                       </button>
-                      <button onClick={() => setConfirmDelete(i)} className="size-8 rounded-lg border border-border flex items-center justify-center hover:bg-destructive/10 hover:border-destructive/30 transition-colors">
+                      <button onClick={() => setConfirmDelete({ index: i, id: t.id })} className="size-8 rounded-lg border border-border flex items-center justify-center hover:bg-destructive/10 hover:border-destructive/30 transition-colors">
                         <Trash2 className="size-3.5 text-destructive" />
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {types.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">No service types yet</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -162,7 +161,9 @@ export default function AdminServiceTypes() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={handleSave} className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">Save</button>
+                <button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {saving ? "Saving..." : "Save"}
+                </button>
                 <button onClick={() => setModal(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
               </div>
             </div>
@@ -171,7 +172,7 @@ export default function AdminServiceTypes() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {confirmDelete !== null && (
+      {confirmDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
           <div className="relative w-full max-w-sm bg-card rounded-2xl border border-border/50 shadow-2xl p-6 text-center">
@@ -180,10 +181,10 @@ export default function AdminServiceTypes() {
             </div>
             <h2 className="text-lg font-bold mb-2">Delete Service Type</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Are you sure you want to delete <strong>{types[confirmDelete]?.name}</strong>? This cannot be undone.
+              Are you sure you want to delete <strong>{types[confirmDelete.index]?.name}</strong>? This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={handleDelete} className="flex-1 h-11 text-white rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete</button>
+              <button onClick={handleDelete} className="flex-1 h-11 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete</button>
               <button onClick={() => setConfirmDelete(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
             </div>
           </div>

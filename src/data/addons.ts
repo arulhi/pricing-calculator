@@ -1,3 +1,5 @@
+import { api } from "@/lib/api"
+
 export interface Addon {
   id: string
   name: string
@@ -5,8 +7,6 @@ export interface Addon {
   price: number
   unit: string
 }
-
-const STORAGE_KEY = "spfio_addons"
 
 export const DEFAULT_ADDONS: Addon[] = [
   { id: "text-to-speech", name: "Text-to-Speech", desc: "AI voice output for translations", price: 50, unit: "event" },
@@ -16,19 +16,29 @@ export const DEFAULT_ADDONS: Addon[] = [
   { id: "polls", name: "Multilingual Polls", desc: "Interactive polls in multiple languages", price: 25, unit: "event" },
 ]
 
-export function getAddons(): Addon[] {
-  if (typeof window === "undefined") return DEFAULT_ADDONS
+export async function getAddons(): Promise<Addon[]> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch {}
-  return DEFAULT_ADDONS
+    return await api.get<Addon[]>("/api/addons")
+  } catch {
+    return []
+  }
 }
 
-export function saveAddons(addons: Addon[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(addons))
+export async function createAddon(data: Omit<Addon, "id"> & { id: string }): Promise<Addon> {
+  return api.post<Addon>("/api/addons", data)
 }
 
-export function resetAddons() {
-  localStorage.removeItem(STORAGE_KEY)
+export async function updateAddon(id: string, data: Addon): Promise<Addon> {
+  return api.put<Addon>(`/api/addons/${encodeURIComponent(id)}`, data)
+}
+
+export async function deleteAddon(id: string): Promise<void> {
+  await api.delete(`/api/addons/${encodeURIComponent(id)}`)
+}
+
+export async function resetAddons(): Promise<void> {
+  const promises = DEFAULT_ADDONS.map((a) =>
+    api.post<Addon>("/api/addons", a).catch(() => null)
+  )
+  await Promise.all(promises)
 }

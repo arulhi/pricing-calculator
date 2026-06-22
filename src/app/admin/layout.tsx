@@ -4,9 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { LayoutDashboard, Settings, Package, LogOut, ChevronLeft } from "lucide-react"
-import { ToastContainer } from "@/components/ui/toast"
-
-const ADMIN_PASSWORD = "admin123"
+import { api, isAuthenticated, clearToken, ApiError } from "@/lib/api"
 
 const SIDEBAR_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -22,13 +20,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
-    const auth = localStorage.getItem("spfio_admin_auth")
-    if (auth === "true") {
-      setAuthenticated(true)
-    } else if (pathname !== "/admin/login") {
-      router.replace("/admin/login")
+    if (pathname === "/admin/login") {
+      setChecking(false)
+      return
     }
-    setChecking(false)
+    async function checkAuth() {
+      if (!isAuthenticated()) {
+        router.replace("/admin/login")
+        setChecking(false)
+        return
+      }
+      try {
+        await api.get("/api/auth/me")
+        setAuthenticated(true)
+      } catch {
+        clearToken()
+        router.replace("/admin/login")
+      }
+      setChecking(false)
+    }
+    checkAuth()
   }, [pathname, router])
 
   if (pathname === "/admin/login") {
@@ -46,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!authenticated) return null
 
   const handleLogout = () => {
-    localStorage.removeItem("spfio_admin_auth")
+    clearToken()
     router.replace("/admin/login")
   }
 
@@ -107,7 +118,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className={`flex-1 transition-all duration-200 ${sidebarOpen ? "ml-60" : "ml-16"}`}>
         {children}
       </main>
-      <ToastContainer />
     </div>
   )
 }

@@ -4,15 +4,20 @@ import { useState, useEffect } from "react"
 import { Check, Plus, Minus, HelpCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { getServiceTypes, DEFAULT_SERVICE_TYPES } from "@/data/service-types"
-import { getAddons, DEFAULT_ADDONS } from "@/data/addons"
+import { getServiceTypes } from "@/data/service-types"
+import type { ServiceType } from "@/data/service-types"
+import { getAddons } from "@/data/addons"
+import type { Addon } from "@/data/addons"
 import { addSubmission } from "@/data/submissions"
+import { showToast } from "@/components/ui/toast"
 
 const PREMIUM_LANG_RATE = 25
 
-export default function PricingCalculator() {
-  const [serviceTypes, setServiceTypes] = useState(DEFAULT_SERVICE_TYPES)
-  const [addons, setAddons] = useState(DEFAULT_ADDONS)
+export default function PricingCalculator({ showHeading = true }: { showHeading?: boolean }) {
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [addons, setAddons] = useState<Addon[]>([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [serviceType, setServiceType] = useState("live-events")
   const [hours, setHours] = useState(2)
   const [languages, setLanguages] = useState(2)
@@ -29,11 +34,14 @@ export default function PricingCalculator() {
   })
 
   useEffect(() => {
-    setServiceTypes(getServiceTypes())
-    setAddons(getAddons())
+    Promise.all([getServiceTypes(), getAddons()]).then(([st, a]) => {
+      setServiceTypes(st)
+      setAddons(a)
+      setLoading(false)
+    })
   }, [])
 
-  const service = serviceTypes.find((s) => s.id === serviceType) || serviceTypes[0]
+  const service = serviceTypes.find((s) => s.id === serviceType) || serviceTypes[0] || { id: "", name: "Loading...", desc: "", rate: 0, unit: "hour" }
 
   const baseCost = service.rate * hours
   const languageCost = languages * 25 * hours
@@ -72,6 +80,16 @@ export default function PricingCalculator() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 md:px-8">
+      {loading ? (
+        <div className="flex items-center justify-center py-32">
+          <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      ) : serviceTypes.length === 0 ? (
+        <div className="text-center py-32">
+          <p className="text-muted-foreground">Unable to load pricing data. Please try again later.</p>
+        </div>
+      ) : (<>
+      {showHeading && (
       <div className="text-center space-y-4 mb-12">
         <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
           Calculate your pricing
@@ -80,6 +98,7 @@ export default function PricingCalculator() {
           Build your perfect multilingual solution. Only pay for what you need.
         </p>
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
@@ -369,28 +388,34 @@ export default function PricingCalculator() {
             <h2 className="text-xl font-bold mb-1">Request a Quote</h2>
             <p className="text-xs text-muted-foreground mb-6">{hours}hr &middot; {languages} lang{languages > 1 ? "s" : ""} &middot; {attendees.toLocaleString()} attendees</p>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault()
-                addSubmission({
-                  id: crypto.randomUUID(),
-                  timestamp: Date.now(),
-                  serviceType: service.id,
-                  serviceName: service.name,
-                  hours,
-                  languages,
-                  attendees,
-                  premiumLanguages,
-                  selectedAddons,
-                  totalEstimate,
-                  formData: {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    company: formData.company,
-                    message: formData.message,
-                  },
-                })
-                closeQuoteForm()
+                setSubmitting(true)
+                try {
+                  await addSubmission({
+                    serviceType: service.id,
+                    serviceName: service.name,
+                    hours,
+                    languages,
+                    attendees,
+                    premiumLanguages,
+                    selectedAddons,
+                    totalEstimate,
+                    formData: {
+                      firstName: formData.firstName,
+                      lastName: formData.lastName,
+                      email: formData.email,
+                      company: formData.company,
+                      message: formData.message,
+                    },
+                  })
+                  showToast("success", "Quote request submitted successfully!")
+                  closeQuoteForm()
+                } catch {
+                  showToast("error", "Failed to submit quote request. Please try again.")
+                } finally {
+                  setSubmitting(false)
+                }
               }}
               className="space-y-4"
             >
@@ -450,8 +475,8 @@ export default function PricingCalculator() {
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <Button type="submit" className="flex-1 h-11 text-base">
-                  Submit Request
+                <Button type="submit" disabled={submitting} className="flex-1 h-11 text-base">
+                  {submitting ? "Submitting..." : "Submit Request"}
                 </Button>
                 <Button type="button" variant="outline" onClick={closeQuoteForm} className="flex-1 h-11 text-base">
                   Cancel
@@ -461,6 +486,8 @@ export default function PricingCalculator() {
           </div>
         </div>
       )}
+      </>
+    )}
     </div>
   )
 }

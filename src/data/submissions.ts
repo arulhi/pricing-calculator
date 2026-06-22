@@ -1,3 +1,7 @@
+import { api } from "@/lib/api"
+
+export type SubmissionStatus = "APPROVE" | "PROCCESS" | "REJECT"
+
 export interface Submission {
   id: string
   timestamp: number
@@ -9,6 +13,7 @@ export interface Submission {
   premiumLanguages: boolean
   selectedAddons: string[]
   totalEstimate: number
+  status: SubmissionStatus
   formData: {
     firstName: string
     lastName: string
@@ -18,23 +23,23 @@ export interface Submission {
   }
 }
 
-const STORAGE_KEY = "spfio_submissions"
-
-export function getSubmissions(): Submission[] {
-  if (typeof window === "undefined") return []
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch {}
-  return []
+export async function getSubmissions(): Promise<Submission[]> {
+  return api.get<Submission[]>("/api/submissions")
 }
 
-export function addSubmission(submission: Submission) {
-  const subs = getSubmissions()
-  subs.unshift(submission)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(subs))
+export async function addSubmission(submission: Omit<Submission, "id" | "timestamp" | "status"> & { status?: SubmissionStatus }): Promise<Submission> {
+  return api.post<Submission>("/api/submissions", { ...submission, status: submission.status || "PROCCESS" })
 }
 
-export function clearSubmissions() {
-  localStorage.removeItem(STORAGE_KEY)
+export async function deleteSubmission(id: string): Promise<void> {
+  await api.delete(`/api/submissions/${id}`)
+}
+
+export async function updateSubmission(id: string, data: Partial<Submission>): Promise<Submission> {
+  return api.put<Submission>(`/api/submissions/${id}`, data)
+}
+
+export async function clearSubmissions(): Promise<void> {
+  const subs = await getSubmissions()
+  await Promise.all(subs.map((s) => deleteSubmission(s.id).catch(() => null)))
 }

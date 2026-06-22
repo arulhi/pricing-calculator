@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { api, setToken, ApiError } from "@/lib/api"
 import { Lock } from "lucide-react"
 
 export default function AdminLogin() {
@@ -10,16 +11,22 @@ export default function AdminLogin() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (username === "admin" && password === "admin123") {
-      localStorage.setItem("spfio_admin_auth", "true")
+    setLoading(true)
+    setError(false)
+    try {
+      const res = await api.post<{ token: string }>("/api/auth/login", { username, password })
+      setToken(res.token)
       router.replace("/admin")
-    } else {
+    } catch (err) {
       setError(true)
       setUsername("")
       setPassword("")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -70,8 +77,8 @@ export default function AdminLogin() {
                 <p className="text-xs text-destructive">Invalid username or password. Try again.</p>
               )}
             </div>
-            <Button type="submit" className="w-full h-11 text-base">
-              Sign In
+            <Button type="submit" disabled={loading} className="w-full h-11 text-base">
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </div>
