@@ -13,6 +13,7 @@ export default function AdminAddons() {
   const [confirmDelete, setConfirmDelete] = useState<{ index: number; id: string } | null>(null)
   const [form, setForm] = useState({ id: "", name: "", desc: "", price: "", unit: "" })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     getAddons().then(setAddons).finally(() => setLoading(false))
@@ -40,15 +41,14 @@ export default function AdminAddons() {
     }
     try {
       if (modal?.type === "add") {
-        const created = await createAddon(item)
-        setAddons((prev) => [...prev, created])
-        showToast("success", "Add-on added")
+        await createAddon(item)
       } else if (modal?.id) {
-        const updated = await updateAddon(modal.id, item)
-        setAddons((prev) => prev.map((a) => (a.id === modal.id ? updated : a)))
-        showToast("success", "Add-on updated")
+        await updateAddon(modal.id, item)
       }
+      const updatedList = await getAddons()
+      setAddons(updatedList)
       setModal(null)
+      showToast("success", modal?.type === "add" ? "Add-on added" : "Add-on updated")
     } catch {
       showToast("error", "Failed to save add-on")
     } finally {
@@ -58,13 +58,16 @@ export default function AdminAddons() {
 
   const handleDelete = async () => {
     if (!confirmDelete) return
+    setDeleting(true)
     try {
       await deleteAddon(confirmDelete.id)
-      setAddons((prev) => prev.filter((_, i) => i !== confirmDelete.index))
+      getAddons().then(setAddons)
       setConfirmDelete(null)
       showToast("success", "Add-on deleted")
     } catch {
       showToast("error", "Failed to delete add-on")
+    } finally {
+      setDeleting(false)
     }
   }
 

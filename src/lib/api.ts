@@ -44,8 +44,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(body || `Request failed with status ${res.status}`, res.status)
   }
 
-  if (res.status === 204) return undefined as T
-  return res.json()
+  const contentType = res.headers.get("content-type")
+  if (res.status === 204 || !contentType || !contentType.includes("application/json")) {
+    return undefined as T
+  }
+  try {
+    return await res.json()
+  } catch {
+    return undefined as T
+  }
 }
 
 export const api = {

@@ -13,6 +13,7 @@ export default function AdminServiceTypes() {
   const [confirmDelete, setConfirmDelete] = useState<{ index: number; id: string } | null>(null)
   const [form, setForm] = useState({ id: "", name: "", desc: "", rate: "", unit: "" })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     getServiceTypes().then(setTypes).finally(() => setLoading(false))
@@ -40,15 +41,14 @@ export default function AdminServiceTypes() {
     }
     try {
       if (modal?.type === "add") {
-        const created = await createServiceType(item)
-        setTypes((prev) => [...prev, created])
-        showToast("success", "Service type added")
+        await createServiceType(item)
       } else if (modal?.id) {
-        const updated = await updateServiceType(modal.id, item)
-        setTypes((prev) => prev.map((t) => (t.id === modal.id ? updated : t)))
-        showToast("success", "Service type updated")
+        await updateServiceType(modal.id, item)
       }
+      const updatedList = await getServiceTypes()
+      setTypes(updatedList)
       setModal(null)
+      showToast("success", modal?.type === "add" ? "Service type added" : "Service type updated")
     } catch {
       showToast("error", "Failed to save service type")
     } finally {
@@ -58,13 +58,16 @@ export default function AdminServiceTypes() {
 
   const handleDelete = async () => {
     if (!confirmDelete) return
+    setDeleting(true)
     try {
       await deleteServiceType(confirmDelete.id)
-      setTypes((prev) => prev.filter((_, i) => i !== confirmDelete.index))
+      getServiceTypes().then(setTypes)
       setConfirmDelete(null)
       showToast("success", "Service type deleted")
     } catch {
       showToast("error", "Failed to delete service type")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -184,7 +187,7 @@ export default function AdminServiceTypes() {
               Are you sure you want to delete <strong>{types[confirmDelete.index]?.name}</strong>? This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={handleDelete} className="flex-1 h-11 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">{deleting ? "Deleting..." : "Yes, Delete"}</button>
               <button onClick={() => setConfirmDelete(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
             </div>
           </div>
