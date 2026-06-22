@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import Header from "@/components/header";
+import Footer from "@/components/footer";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -8,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SaaS Pricing Calculator | Transparent & Scalable",
-  description: "Estimate your SaaS subscription costs with our transparent pricing calculator. Choose your plan, users, and add-ons.",
+  title: "Access in any language | spf.io",
+  description: "Make your events, content, and conversations accessible and multilingual with our all-in-one platform powered by AI with a human touch.",
 };
 
 export default function RootLayout({
@@ -22,12 +24,12 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/20`}
       >
-        <div className="relative min-h-screen">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-          <div className="absolute inset-0 bg-radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(120,119,198,0.1),transparent)" />
-          <main className="relative">
+        <div className="relative min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-1">
             {children}
           </main>
+          <Footer />
         </div>
       </body>
     </html>
