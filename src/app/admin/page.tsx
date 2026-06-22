@@ -57,8 +57,11 @@ export default function AdminDashboard() {
     }
   }
 
+  const [deleting, setDeleting] = useState(false)
+
   const handleDeleteOne = async () => {
     if (!confirmDelete) return
+    setDeleting(true)
     try {
       await deleteSubmission(confirmDelete)
       setSubmissions((prev) => prev.filter((s) => s.id !== confirmDelete))
@@ -67,11 +70,13 @@ export default function AdminDashboard() {
     } catch {
       showToast("error", "Failed to delete submission")
     } finally {
+      setDeleting(false)
       setConfirmDelete(null)
     }
   }
 
   const handleBulkDelete = async () => {
+    setDeleting(true)
     try {
       await Promise.all(Array.from(selectedIds).map((id) => deleteSubmission(id).catch(() => null)))
       setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)))
@@ -81,6 +86,7 @@ export default function AdminDashboard() {
       showToast("error", "Failed to delete some submissions")
     } finally {
       setConfirmBulkDelete(false)
+      setDeleting(false)
     }
   }
 
@@ -269,6 +275,7 @@ export default function AdminDashboard() {
                           </button>
                           <button
                             onClick={() => setConfirmDelete(s.id)}
+                            
                             className="size-8 rounded-lg border border-border flex items-center justify-center hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
                             title="Delete"
                           >
@@ -351,7 +358,9 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-bold mb-2">Delete Submission</h2>
             <p className="text-sm text-muted-foreground mb-6">Are you sure you want to delete this submission? This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={handleDeleteOne} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete</button>
+              <button onClick={handleDeleteOne} disabled={deleting} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
               <button onClick={() => setConfirmDelete(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
             </div>
           </div>
@@ -369,7 +378,9 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-bold mb-2">Delete {selectedIds.size} Submissions</h2>
             <p className="text-sm text-muted-foreground mb-6">Are you sure you want to delete {selectedIds.size} submissions? This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={handleBulkDelete} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete All</button>
+              <button onClick={handleBulkDelete} disabled={deleting} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">
+                {deleting ? "Deleting..." : "Yes, Delete All"}
+              </button>
               <button onClick={() => setConfirmBulkDelete(false)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
             </div>
           </div>

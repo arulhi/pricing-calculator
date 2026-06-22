@@ -187,7 +187,9 @@ export default function AdminAddons() {
               Are you sure you want to delete <strong>{addons[confirmDelete.index]?.name}</strong>? This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={handleDelete} className="flex-1 h-11 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">Yes, Delete</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 h-11 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
               <button onClick={() => setConfirmDelete(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
             </div>
           </div>
