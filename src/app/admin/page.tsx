@@ -245,7 +245,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-4 font-medium whitespace-nowrap">{s.formData.firstName} {s.formData.lastName}</td>
                       <td className="p-4 text-muted-foreground text-xs">{s.formData.email}</td>
-                      <td className="p-4 text-muted-foreground text-xs">{s.formData.company || "\u2014"}</td>
+                      <td className="p-4 text-muted-foreground text-xs">{s.formData.company || "empty"}</td>
                       <td className="p-4">
                         <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                           {s.serviceName}
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
                         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedIds.has(s.id) ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
                           <div className="px-4 pb-4 pl-14">
                             <div className="border-t border-border/20 pt-3">
-                              <table className="w-full text-xs">
+                              <table className="w-full table-fixed text-xs">
                                 <thead>
                                   <tr className="border-b border-border/10">
                                     <th className="text-left py-1.5 pr-3 font-semibold text-muted-foreground uppercase tracking-wider">Premium Languages</th>
@@ -311,7 +311,7 @@ export default function AdminDashboard() {
                                     <td className="py-2 pr-3 font-medium text-foreground">{s.hours} hr</td>
                                     <td className="py-2 pr-3 font-medium text-foreground">{s.languages}</td>
                                     <td className="py-2 pr-3 font-medium text-foreground">{s.attendees.toLocaleString()}</td>
-                                    <td className="py-2 pr-3">
+                                    <td className="py-2 pr-3 break-words">
                                       {s.selectedAddons.length > 0 ? (
                                         <div className="flex flex-wrap gap-1">
                                           {s.selectedAddons.map((a) => (
@@ -319,14 +319,14 @@ export default function AdminDashboard() {
                                           ))}
                                         </div>
                                       ) : (
-                                        <span className="text-muted-foreground/50">\u2014</span>
+                                        <span className="text-muted-foreground/50">empty</span>
                                       )}
                                     </td>
                                     <td className="py-2">
                                       {s.formData.message ? (
                                         <p className="text-foreground/80 leading-relaxed line-clamp-2">{s.formData.message}</p>
                                       ) : (
-                                        <span className="text-muted-foreground/50">\u2014</span>
+                                        <span className="text-muted-foreground/50">empty</span>
                                       )}
                                     </td>
                                   </tr>

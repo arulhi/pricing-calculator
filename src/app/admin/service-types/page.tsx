@@ -14,23 +14,34 @@ export default function AdminServiceTypes() {
   const [form, setForm] = useState({ id: "", name: "", desc: "", rate: "", unit: "" })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     getServiceTypes().then(setTypes).finally(() => setLoading(false))
   }, [])
 
   const openAdd = () => {
+    setFieldErrors({})
     setForm({ id: "", name: "", desc: "", rate: "0", unit: "hour" })
     setModal({ type: "add" })
   }
 
   const openEdit = (i: number) => {
+    setFieldErrors({})
     const t = types[i]
     setForm({ id: t.id, name: t.name, desc: t.desc, rate: String(t.rate), unit: t.unit })
     setModal({ type: "edit", id: t.id, index: i })
   }
 
   const handleSave = async () => {
+    const errors: Record<string, string> = {}
+    if (!form.id.trim()) errors.id = "ID is required"
+    if (!form.name.trim()) errors.name = "Name is required"
+    if (!form.desc.trim()) errors.desc = "Description is required"
+    if (!form.rate.trim()) errors.rate = "Rate is required"
+    if (!form.unit.trim()) errors.unit = "Unit is required"
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
     setSaving(true)
     const item = {
       id: form.id.replace(/\s+/g, "-"),
@@ -134,40 +145,45 @@ export default function AdminServiceTypes() {
       {/* Add/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModal(null)} />
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setModal(null); setFieldErrors({}); }} />
           <div className="relative w-full max-w-lg bg-card rounded-2xl border border-border/50 shadow-2xl p-6">
-            <button onClick={() => setModal(null)} className="absolute top-4 right-4 size-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted/50 transition-colors">
+            <button onClick={() => { setModal(null); setFieldErrors({}); }} className="absolute top-4 right-4 size-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted/50 transition-colors">
               <X className="size-4" />
             </button>
             <h2 className="text-lg font-bold mb-6">{modal.type === "add" ? "Add Service Type" : "Edit Service Type"}</h2>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">ID</label>
-                <input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.replace(/\s+/g, "-") })} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" placeholder="service-id" />
+                <input value={form.id} onChange={(e) => { setForm({ ...form, id: e.target.value.replace(/\s+/g, "-") }); if (fieldErrors.id) setFieldErrors((prev) => ({ ...prev, id: "" })); }} className={`w-full h-10 px-3 rounded-lg border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${fieldErrors.id ? "border-red-500" : "border-border"}`} placeholder="service-id" />
+                {fieldErrors.id && <p className="text-xs text-red-500">{fieldErrors.id}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Name</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" placeholder="Service Name" />
+                <input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" })); }} className={`w-full h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${fieldErrors.name ? "border-red-500" : "border-border"}`} placeholder="Service Name" />
+                {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Description</label>
-                <input value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" placeholder="Short description" />
+                <input value={form.desc} onChange={(e) => { setForm({ ...form, desc: e.target.value }); if (fieldErrors.desc) setFieldErrors((prev) => ({ ...prev, desc: "" })); }} className={`w-full h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${fieldErrors.desc ? "border-red-500" : "border-border"}`} placeholder="Short description" />
+                {fieldErrors.desc && <p className="text-xs text-red-500">{fieldErrors.desc}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Rate ($)</label>
-                  <input type="number" min={0} value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" placeholder="0" />
+                  <input type="text" inputMode="decimal" min={0} value={form.rate} onKeyDown={(e) => { const allowed = ["Backspace","Delete","Tab","Enter","ArrowLeft","ArrowRight","Home","End"]; if (allowed.includes(e.key)) return; if (e.key !== "." && !/^\d$/.test(e.key)) { e.preventDefault(); return; } const input = e.currentTarget; const start = input.selectionStart ?? 0; const end = input.selectionEnd ?? 0; const nextValue = input.value.slice(0, start) + e.key + input.value.slice(end); if ((e.key === "." && nextValue.split(".").length > 2) || /^0\d+/.test(nextValue)) { e.preventDefault(); } }} onChange={(e) => { const v = e.target.value; if (/^0\d+/.test(v)) return; setForm({ ...form, rate: v }); if (fieldErrors.rate) setFieldErrors((prev) => ({ ...prev, rate: "" })); }} pattern="0|[1-9][0-9]*(\.[0-9]*)?" className={`w-full h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${fieldErrors.rate ? "border-red-500" : "border-border"}`} placeholder="0" />
+                  {fieldErrors.rate && <p className="text-xs text-red-500">{fieldErrors.rate}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Unit</label>
-                  <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" placeholder="hour" />
+                  <input value={form.unit} onChange={(e) => { setForm({ ...form, unit: e.target.value }); if (fieldErrors.unit) setFieldErrors((prev) => ({ ...prev, unit: "" })); }} className={`w-full h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${fieldErrors.unit ? "border-red-500" : "border-border"}`} placeholder="hour" />
+                  {fieldErrors.unit && <p className="text-xs text-red-500">{fieldErrors.unit}</p>}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
                   {saving ? "Saving..." : "Save"}
                 </button>
-                <button onClick={() => setModal(null)} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
+                <button onClick={() => { setModal(null); setFieldErrors({}); }} className="flex-1 h-11 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors">Cancel</button>
               </div>
             </div>
           </div>
